@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.akcay.chatwebsocket.ui.screen.ChatbotScreen
 import com.akcay.chatwebsocket.ui.theme.ChatWebSocketTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,7 +26,7 @@ fun ChatbotApp(modifier: Modifier = Modifier) {
             }
         ) {
             Box(modifier = modifier.padding(it)) {
-                Cha
+                ChatbotScreen()
             }
         }
     }
