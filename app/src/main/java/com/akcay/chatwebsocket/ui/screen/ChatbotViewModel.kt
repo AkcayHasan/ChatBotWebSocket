@@ -14,10 +14,12 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -31,8 +33,7 @@ class ChatbotViewModel @Inject constructor(
     var uiState = mutableStateOf(ChatbotUiState())
         private set
 
-    private val _liveSupportFlow = MutableStateFlow<List<LiveSupportStep>?>(null)
-    private val liveSupportFlow: StateFlow<List<LiveSupportStep>?> = _liveSupportFlow.asStateFlow()
+    private val liveSupportFlow = MutableStateFlow<List<LiveSupportStep>?>(null)
 
     private val _liveSupportStep = MutableStateFlow<LiveSupportStep?>(null)
     val liveSupportStep: StateFlow<LiveSupportStep?> = _liveSupportStep.asStateFlow()
@@ -60,7 +61,7 @@ class ChatbotViewModel @Inject constructor(
         if (buttonAction == Steps.EndConversation.type) {
             closeWebSocket()
         } else {
-            liveSupportFlow.value?.forEach { step ->
+            liveSupportFlow.asStateFlow().value?.forEach { step ->
                 if (step.step == buttonAction) {
                     viewModelScope.launch {
                         showLoading()
@@ -84,7 +85,7 @@ class ChatbotViewModel @Inject constructor(
     }
 
     fun startAllProcess() {
-        liveSupportFlow.value?.forEach { step ->
+        liveSupportFlow.asStateFlow().value?.forEach { step ->
             if (step.step == Steps.Step1.type) {
                 viewModelScope.launch {
                     sendStepUseCase.invoke(step)
@@ -96,11 +97,13 @@ class ChatbotViewModel @Inject constructor(
     private fun loadJsonFromAssets(context: Context) {
         viewModelScope.launch {
             try {
-                val jsonString = context.assets.open(Constants.JSON_FILE_NAME).bufferedReader()
-                    .use { it.readText() }
-                val type = object : TypeToken<List<LiveSupportStep>>() {}.type
-                val flowData = gson.fromJson<List<LiveSupportStep>>(jsonString, type)
-                _liveSupportFlow.emit(flowData)
+                val flowData = withContext(Dispatchers.IO) {
+                    val jsonString = context.assets.open(Constants.JSON_FILE_NAME).bufferedReader()
+                        .use { it.readText() }
+                    val type = object : TypeToken<List<LiveSupportStep>>() {}.type
+                    gson.fromJson<List<LiveSupportStep>>(jsonString, type)
+                }
+                liveSupportFlow.emit(flowData)
             } catch (e: Exception) {
                 Log.e("osman", "${e.message}")
             }
