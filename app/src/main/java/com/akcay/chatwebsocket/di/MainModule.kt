@@ -1,7 +1,10 @@
 package com.akcay.chatwebsocket.di
 
+import com.akcay.chatwebsocket.data.model.LiveSupportStep
 import com.akcay.chatwebsocket.data.service.WebSocketClient
+import com.akcay.chatwebsocket.util.LiveSupportStepDeserializer
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,11 +17,13 @@ class MainModule {
 
     @Provides
     @Singleton
-    fun provideGsonObject() = Gson()
+    fun provideGsonObject(): Gson = GsonBuilder()
+        .registerTypeAdapter(LiveSupportStep::class.java, LiveSupportStepDeserializer())
+        .create()
 
     @Provides
     @Singleton
-    fun provideWebSocketClient(gson: Gson): WebSocketClient {
-        return WebSocketClient(gson)
+    fun provideWebSocketClient(): WebSocketClient {
+        return WebSocketClient()
     }
 }
