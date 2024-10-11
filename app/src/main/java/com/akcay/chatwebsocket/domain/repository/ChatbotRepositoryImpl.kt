@@ -14,4 +14,8 @@ class ChatbotRepositoryImpl @Inject constructor(
 
     override fun observeMessages(): Flow<String> = webSocketClient.connectFlow()
 
+    override suspend fun closeWebSocket() {
+        webSocketClient.close()
+    }
+
 }

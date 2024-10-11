@@ -6,4 +6,5 @@ interface ChatbotRepository {
 
     suspend fun sendStep(stepJson: String)
     fun observeMessages(): Flow<String>
+    suspend fun closeWebSocket()
 }

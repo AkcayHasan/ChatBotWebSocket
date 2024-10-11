@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.akcay.chatwebsocket.data.model.LiveSupportStep
+import com.akcay.chatwebsocket.domain.usecase.CloseWebSocketUseCase
 import com.akcay.chatwebsocket.domain.usecase.ObserveMessagesUseCase
 import com.akcay.chatwebsocket.domain.usecase.SendStepUseCase
 import com.akcay.chatwebsocket.util.Constants
@@ -27,7 +28,8 @@ class ChatbotViewModel @Inject constructor(
     @ApplicationContext context: Context,
     private val gson: Gson,
     private val sendStepUseCase: SendStepUseCase,
-    private val observeMessagesUseCase: ObserveMessagesUseCase
+    private val observeMessagesUseCase: ObserveMessagesUseCase,
+    private val closeWebSocketUseCase: CloseWebSocketUseCase
 ) : ViewModel() {
 
     var uiState = mutableStateOf(ChatbotUiState())
@@ -39,7 +41,6 @@ class ChatbotViewModel @Inject constructor(
     val liveSupportStep: StateFlow<LiveSupportStep?> = _liveSupportStep.asStateFlow()
 
     init {
-        observeMessages()
         loadJsonFromAssets(context = context)
     }
 
@@ -47,9 +48,9 @@ class ChatbotViewModel @Inject constructor(
         viewModelScope.launch {
             observeMessagesUseCase().collect {
                 try {
-                    hideLoading()
                     val response = gson.fromJson(it, LiveSupportStep::class.java)
                     _liveSupportStep.emit(response)
+                    hideLoading()
                 } catch (e: Exception) {
                     Log.e("osman", "observeMessages: ${e.message}")
                 }
@@ -58,13 +59,13 @@ class ChatbotViewModel @Inject constructor(
     }
 
     fun handleUserChoice(buttonAction: String) {
+        showLoading()
         if (buttonAction == Steps.EndConversation.type) {
             closeWebSocket()
         } else {
             liveSupportFlow.asStateFlow().value?.forEach { step ->
                 if (step.step == buttonAction) {
                     viewModelScope.launch {
-                        showLoading()
                         sendStepUseCase.invoke(step)
                     }
                 }
@@ -73,7 +74,10 @@ class ChatbotViewModel @Inject constructor(
     }
 
     private fun closeWebSocket() {
-
+        uiState.value = uiState.value.copy(isLoading = false, isProcessStarted = false)
+        viewModelScope.launch {
+            closeWebSocketUseCase.invoke()
+        }
     }
 
     private fun showLoading() {
@@ -85,6 +89,8 @@ class ChatbotViewModel @Inject constructor(
     }
 
     fun startAllProcess() {
+        uiState.value = uiState.value.copy(isLoading = true, isProcessStarted = true)
+        observeMessages()
         liveSupportFlow.asStateFlow().value?.forEach { step ->
             if (step.step == Steps.Step1.type) {
                 viewModelScope.launch {
